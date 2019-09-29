@@ -53,41 +53,54 @@
                 (location/z s)
                 (magnitude/m s))))
 
-(defun mknode (id coords axis l r)
-  (make-array 5 :initial-contents (list id axis l r coords)))
+(defun mknode (obj axis l r)
+  (make-array 4 :initial-contents (list obj axis l r)))
 
-(defmacro node-coords (node)
-  `(elt ,node 4))
+(defmacro definline (name args &body body)
+  `(progn
+     (declaim (inline ,name))
+     (defun ,name ,args ,@body)))
 
-(defmacro node-axis (node)
-  `(elt ,node 1))
+(definline node-obj (node)
+  (elt node 0))
 
-(defmacro node-left (node)
-  `(elt ,node 2))
+(definline node-axis (node)
+  (elt node 1))
 
-(defmacro node-right (node)
-  `(elt ,node 3))
+(definline node-left (node)
+  (elt node 2))
 
-(defun kdtree (points axis depth)
-  (when points
-    (let* ((k (length (car points))))
-      (setf points (sort points
-                         #'<
-                         :key #'(lambda (a) (nth axis a))))
-      (let ((median (floor (/ (length points) 2)))
-            (axis (mod (1+ axis) k)))
-        (mknode 1
-                (nth median points)
+(definline node-right (node)
+  (elt node 3))
+
+(defun kdtree (objects coords-key axis)
+  (when objects
+    (let* ((kdims (->> objects
+                    car
+                    (funcall coords-key)
+                    length)))
+      (setf objects (sort objects
+                          #'<
+                          :key #'(lambda (a)
+                                   (nth axis (funcall coords-key a)))))
+      (let ((median (floor (/ (length objects) 2)))
+            (next-axis (mod (1+ axis) kdims)))
+        (mknode (nth median objects)
                 axis
-                (kdtree (take median points)
-                        axis
-                        (1+ depth))
-                (kdtree (drop (1+ median) points)
-                        axis
-                        (1+ depth)))))))
+                (kdtree (take median objects)
+                        coords-key
+                        next-axis)
+                (kdtree (drop (1+ median) objects)
+                        coords-key
+                        next-axis))))))
 
 ;; Agrees with https://en.wikipedia.org/wiki/K-d_tree:
-(kdtree '((7 2) (5 4) (9 6) (4 7) (8 1) (2 3)) 0 0)
+(kdtree '((7 2) (5 4) (9 6) (4 7) (8 1) (2 3))
+        #'identity
+        0)
+;;=>
+'#(1 1 #(1 0 #(1 1 NIL NIL (2 3)) #(1 1 NIL NIL (4 7)) (5 4))
+   #(1 0 #(1 1 NIL NIL (8 1)) NIL (9 6)) (7 2))
 ;;=>
 '#((7 2) 1
    #((5 4) 0
@@ -96,6 +109,12 @@
    #((9 6) 0
      #((8 1) 1 NIL NIL)
      NIL))
+
+(defun star->pos (s)
+  (when s
+    (list (location/x s)
+          (location/y s)
+          (location/z s))))
 
 (defun dist (p1 p2)
   (->> p2
@@ -107,29 +126,41 @@
   (assert treenode)
   (dist (node-coords treenode) p))
 
-(defun star->pos (s)
-  (list (location/x s)
-        (location/y s)
-        (location/z s)))
-
-(defun stardist (s p)
+(defun star-dist (s p)
   (dist (star->pos s) p))
 
 (defun printall (&rest xs)
-  (loop for x in xs do (print x)))
+  (loop for x in xs do (progn (princ x) (princ " "))))
+
+(defun print-node (x tree)
+  (when tree
+    (printall x (node-obj tree) (star->pos (node-obj tree))))
+  (terpri))
 
 ;; Adapted from http://code.activestate.com/recipes/\
 ;; 577497-kd-tree-for-nearest-neighbor-search-in-a-k-dimensi/
-(defun nearest-neighbor (tree origin)
-  (let ((best #(nil 1E20)))
+(defun nearest-neighbor (tree coord-fn origin)
+  (let ((best '(nil 1E20)))
     (labels ((find-best (tree)
                (when tree
-                 (let ((here-sd (nodedist tree origin))
-                       (axis (node-axis tree)))
-                   (when (< here-sd (elt best 1))
-                     (setf best `#(,tree ,here-sd)))
+                 (let* ((tree-pos (funcall coord-fn (node-obj tree)))
+                        (here-sd (dist tree-pos origin))
+                        (axis (node-axis tree)))
+                   (when (and (not (equal origin (star->pos (node-obj tree))))
+                              (< here-sd (cadr best)))
+                     #++(format t "best: ~15a ~{~4a ~}   cur: ~15a ~{~4a ~}  dist: ~a~%"
+                                (if (car best)
+                                    (name/n (node-obj (car best)))
+                                    nil)
+                                (if (car best)
+                                    (star->pos (node-obj (car best)))
+                                    '(nil nil nil))
+                                (name/n (node-obj tree))
+                                (star->pos (node-obj tree))
+                                here-sd)
+                     (setf best (list tree here-sd)))
                    (let* ((diff (- (elt origin axis)
-                                   (elt (node-coords tree) axis)))
+                                   (elt (funcall coord-fn (node-obj tree)) axis)))
                           (close (if (> diff 0)
                                      (node-right tree)
                                      (node-left tree)))
@@ -137,22 +168,35 @@
                                     (node-left tree)
                                     (node-right tree))))
                      (find-best close)
-                     (if (< (* diff diff) (elt best 1))
-                         (find-best away)))))))
+                     (when (< (* diff diff) (cadr best))
+                       (find-best away)))))))
       (find-best tree))
-    (node-coords (elt best 0))))
+    (node-obj (car best))))
 
-(let* ((stars (make-stars 10000))
-       (points (mapcar #'star->pos stars))
-       (tree (kdtree points 0 0))
-       (ref-point '(0 0 0))
-       (best-pos (nearest-neighbor tree ref-point)))
-  (loop for p in points
-     if (< (dist p ref-point) (dist best-pos ref-point))
-     do (format t "Warning: ~a is smaller! (~a vs ~a) ~%"
-                p
-                (dist p ref-point)
-                (dist best-pos ref-point)))
-  (loop for c from 0 to 2
-     do (assert (< (nth c best-pos) 100)))
-  best-pos)
+(let* ((stars (make-stars 1000))
+       (tree (kdtree (copy-seq stars) #'star->pos 0))
+       (ref-star (rand-nth stars))
+       (ref-point (star->pos ref-star))
+       (best-star (nearest-neighbor tree #'star->pos ref-point)))
+  (format t "REF STAR: ~10a ~{~4a ~}~%"
+          (name/n ref-star)
+          (star->pos ref-star))
+  (format t "BEST STAR: ~a~%" (name/n best-star))
+  (loop for s in stars
+     for j from 0
+     do
+       (format t "~3a ~a~15a ~{~4a ~} dist: ~a~a~a~%"
+               j
+               (if (and (not (eq s ref-star))
+                        (< (star-dist s ref-point) (star-dist best-star ref-point)))
+                   "WARNING "
+                   "")
+               (name/n s)
+               (star->pos s)
+               (star-dist s ref-point)
+               (if (eq s ref-star)
+                   "<--------- SELF"
+                   "")
+               (if (eq s best-star)
+                   "<----- BEST"
+                   ""))))

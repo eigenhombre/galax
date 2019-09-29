@@ -53,20 +53,20 @@
                 (location/z s)
                 (magnitude/m s))))
 
-(defun mknode (coords axis l r)
-  (make-array 4 :initial-contents (list coords axis l r)))
+(defun mknode (id coords axis l r)
+  (make-array 5 :initial-contents (list id axis l r coords)))
 
 (defmacro node-coords (node)
-  `(elt node 0))
+  `(elt ,node 4))
 
 (defmacro node-axis (node)
-  `(elt node 1))
+  `(elt ,node 1))
 
 (defmacro node-left (node)
-  `(elt node 2))
+  `(elt ,node 2))
 
-(defmacro node-coords (node)
-  `(elt node 3))
+(defmacro node-right (node)
+  `(elt ,node 3))
 
 (defun kdtree (points axis depth)
   (when points
@@ -76,7 +76,8 @@
                          :key #'(lambda (a) (nth axis a))))
       (let ((median (floor (/ (length points) 2)))
             (axis (mod (1+ axis) k)))
-        (mknode (nth median points)
+        (mknode 1
+                (nth median points)
                 axis
                 (kdtree (take median points)
                         axis
@@ -104,7 +105,7 @@
 
 (defun nodedist (treenode p)
   (assert treenode)
-  (dist (elt treenode 0) p))
+  (dist (node-coords treenode) p))
 
 (defun star->pos (s)
   (list (location/x s)
@@ -124,27 +125,27 @@
     (labels ((find-best (tree)
                (when tree
                  (let ((here-sd (nodedist tree origin))
-                       (axis (elt tree 1)))
+                       (axis (node-axis tree)))
                    (when (< here-sd (elt best 1))
                      (setf best `#(,tree ,here-sd)))
                    (let* ((diff (- (elt origin axis)
-                                   (elt (elt tree 0) axis)))
+                                   (elt (node-coords tree) axis)))
                           (close (if (> diff 0)
-                                     (elt tree 3)
-                                     (elt tree 2)))
+                                     (node-right tree)
+                                     (node-left tree)))
                           (away (if (> diff 0)
-                                    (elt tree 2)
-                                    (elt tree 3))))
+                                    (node-left tree)
+                                    (node-right tree))))
                      (find-best close)
                      (if (< (* diff diff) (elt best 1))
                          (find-best away)))))))
       (find-best tree))
-    (elt (elt best 0) 0)))
+    (node-coords (elt best 0))))
 
-(let* ((stars (make-stars 100))
+(let* ((stars (make-stars 10000))
        (points (mapcar #'star->pos stars))
        (tree (kdtree points 0 0))
-       (ref-point '(1000 1000 1000))
+       (ref-point '(0 0 0))
        (best-pos (nearest-neighbor tree ref-point)))
   (loop for p in points
      if (< (dist p ref-point) (dist best-pos ref-point))
@@ -152,4 +153,6 @@
                 p
                 (dist p ref-point)
                 (dist best-pos ref-point)))
+  (loop for c from 0 to 2
+     do (assert (< (nth c best-pos) 100)))
   best-pos)

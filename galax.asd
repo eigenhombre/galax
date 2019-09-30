@@ -10,7 +10,9 @@
                "trivialtests")
   :components ((:module "src"
                         :components
-                        ((:file "main"))))
+                        ((:file "package")
+                         (:file "neighbors")
+                         (:file "main" :depends-on ("package" "neighbors")))))
   :description ""
   :in-order-to ((test-op (test-op "galax/tests"))))
 

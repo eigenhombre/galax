@@ -1,10 +1,17 @@
 (in-package :galax)
 
 (define-aspect ident id)
+(define-aspect name n)
+
+;; Planets
+(define-aspect habitability h)
+(define-entity planet (ident name habitability))
+
+;; Stars
 (define-aspect location x y z)
 (define-aspect magnitude m)
-(define-aspect name n)
-(define-entity star (ident location magnitude name))
+(define-aspect planets p)
+(define-entity star (ident location magnitude name planets))
 
 (defparameter *galaxy-radius-ly* (/ 105700 2))
 (defparameter *galaxy-thickness-ly* 1000)
@@ -21,30 +28,42 @@
                 (* r (sin th))
                 (- (random *galaxy-thickness-ly*)
                    (/ *galaxy-thickness-ly* 2)))))
-    (:cube (list (random 1000)
-                 (random 1000)
-                 (random 1000)))
+    (:cube (list (random 10000)
+                 (random 10000)
+                 (random 10000)))
     (otherwise (error "bad dist-type"))))
 
+(defun planets-for-star (starname)
+  (loop repeat (rand-int 10)
+     for id from 1
+     collect (create-entity 'planet
+                            :ident/id id
+                            :name/n (format nil "~a (~a-~a)"
+                                            (make-name)
+                                            starname
+                                            id)
+                            :habitability/h (random (1+ (random 99))))))
 (defun make-stars (n)
   (loop repeat n
      for id from 1
      collect
-       (progn
-         (destructuring-bind (x y z) (xyz :dist-type :galaxy)
+       (let ((num-planets (rand-int 10))
+             (star-name (make-name)))
+         (destructuring-bind (x y z) (xyz :dist-type :cube)
            (create-entity 'star
                           :ident/id id
-                          :name/n (make-name)
+                          :name/n star-name
                           :location/x x
                           :location/y y
                           :location/z z
+                          :planets/p (planets-for-star star-name)
                           :magnitude/m (rand-nth '(o b a f g k m)))))))
 
 (defun main (&rest _)
   (declare (ignore _))
 
   (init-random-number-generator)
-  (let* ((stars (make-stars 10))
+  (let* ((stars (make-stars 30))
          (tree (kdtree (copy-seq stars) #'star->pos 0))
          (ref-star (rand-nth stars))
          (ref-point (star->pos ref-star))
@@ -56,21 +75,28 @@
     (loop for s in stars
        for j from 0
        do
-         (format t "~3a ~a~15a ~{~15,5f ~} ~a dist: ~15,0f~a~a~%"
-                 j
-                 (if (and (not (eq s ref-star))
-                          (< (star-dist s ref-point) (star-dist best-star ref-point)))
-                     "WARNING "
-                     "")
-                 (name/n s)
-                 (star->pos s)
-                 (magnitude/m s)
-                 (star-dist s ref-point)
-                 (if (eq s ref-star)
-                     "<--------- SELF"
-                     "")
-                 (if (eq s best-star)
-                     "<----- BEST"
-                     "")))))
+         (progn
+           (format t "~3a ~a~15a ~{~15,5f ~} M~a dist: ~15,0f~a~a~%"
+                   j
+                   (if (and (not (eq s ref-star))
+                            (< (star-dist s ref-point) (star-dist best-star ref-point)))
+                       "WARNING "
+                       "")
+                   (name/n s)
+                   (star->pos s)
+                   (magnitude/m s)
+                   (star-dist s ref-point)
+                   (if (eq s ref-star)
+                       "<--------- SELF"
+                       "")
+                   (if (eq s best-star)
+                       "<----- BEST"
+                       ""))
+           (loop for p in (planets/p s)
+              do (format t
+                         "   ~a ~25a H~a~%"
+                         (ident/id p)
+                         (name/n p)
+                         (habitability/h p)))))))
 
 (comment (main))

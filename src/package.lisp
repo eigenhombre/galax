@@ -5,4 +5,5 @@
         :syllab
         :cl-utilities
         :trivialtests
-        :arrow-macros))
+        :arrow-macros)
+  (:export :main))

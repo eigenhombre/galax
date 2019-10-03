@@ -186,7 +186,7 @@
   (when (and (probe/ready planet)
              (not (probe/launched planet)))
     (let ((neighbor (nearest-neighbor tree #'star->pos (star->pos star))))
-      (format t "Launching probe from planet ~@(~a~) to star ~:(~a!~)~%"
+      (format t "Launching probe from planet ~@(~a~) to nearest star, ~:(~a~)!~%"
               (name/n planet) (name/n neighbor))
       (setf (probe/launched planet) t)
       (incf *probes-sent*))))

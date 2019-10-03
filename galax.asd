@@ -15,7 +15,8 @@
                         :components
                         ((:file "package")
                          (:file "neighbors")
-                         (:file "main" :depends-on ("package" "neighbors")))))
+                         (:file "lex")
+                         (:file "main" :depends-on ("package" "neighbors" "lex")))))
   :description ""
   :in-order-to ((test-op (test-op "galax/tests"))))
 

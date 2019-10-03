@@ -27,8 +27,7 @@
   (when (and (zerop (life/level p))
              (< (random 1.0) (* *genesis-factor*
                                 (habitability/h p))))
-    (format t "Life has started on ~a!~%"
-            (name/n p))
+    (format t "~a~%" (itsalive (name/n p)))
     (incf *planets-with-life*)
     (setf (life/level p) *initial-life-level*)))
 

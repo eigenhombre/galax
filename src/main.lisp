@@ -5,11 +5,12 @@
 
 (defparameter *planets-with-life* 0)
 (defparameter *planets-with-intelligent-life* 0)
+(defparameter *probes-sent* 0)
 
-(defparameter *genesis-factor* 1E-8)
+(defparameter *genesis-factor* 1E-10)
 (defparameter *life->intelligence* 1.0)
 (defparameter *initial-life-level* 1E-3)
-(defparameter *knowledge-factor* 1E-4)
+(defparameter *knowledge-factor* 4E-4)
 (defparameter *probe-knowledge* 10)
 (defparameter *evolution-probability* 1E-2)
 (defparameter *evolution-factor* 1E-2)
@@ -18,7 +19,7 @@
 (define-aspect habitability h)
 (define-aspect knowledge (level :initform 0))
 (define-aspect life (level :initform 0))
-(define-aspect probe (ready :initform nil))
+(define-aspect probe (ready :initform nil) (launched :initform nil))
 (define-entity planet (ident name habitability life knowledge probe))
 
 (define-system genesis ((p habitability life))
@@ -39,7 +40,7 @@
     ((> (life/level p) *life->intelligence*)
      (if (zerop (knowledge/level p))
          (progn
-           (format t "Intelligent life has started on ~a!~%"
+           (format t "Life has become intelligent on ~a!~%"
                    (name/n p))
            (incf *planets-with-intelligent-life*)
            (setf (knowledge/level p) 1.0))
@@ -91,8 +92,10 @@
      for id from 1
      collect (create-entity 'planet
                             :ident/id id
-                            :name/n (format nil "~a (~a-~a)"
-                                            (make-name)
+                            :name/n (format nil
+                                            "~a (~a-~@R)"
+                                            (format nil "~@(~a~)"
+                                                    (make-name))
                                             starname
                                             id)
                             :habitability/h (random (1+ (random 99)))
@@ -102,7 +105,7 @@
   (loop repeat n
      for id from 1
      collect
-       (let ((star-name (make-name)))
+       (let ((star-name (format nil "~@(~a~)" (make-name))))
          (destructuring-bind (x y z) (xyz :dist-type :cube)
            (create-entity 'star
                           :ident/id id
@@ -113,79 +116,123 @@
                           :planets/p (planets-for-star star-name)
                           :magnitude/m (rand-nth '(o b a f g k m)))))))
 
-(defun show-stars (stars)
-  (let* ((tree (kdtree (copy-seq stars) #'star->pos 0))
-         (ref-star (rand-nth stars))
-         (ref-point (star->pos ref-star))
-         (best-star (nearest-neighbor tree #'star->pos ref-point)))
-    (format t "REF STAR: ~10a ~{~4a ~}~%"
-            (name/n ref-star)
-            (star->pos ref-star))
-    (format t "BEST STAR: ~a~%" (name/n best-star))
-    (loop for s in stars
-       for j from 0
-       do
-         (progn
-           (format t "~3a ~a~15a ~{~15,5f ~} M~a dist: ~15,0f~a~a~%"
-                   j
-                   (if (and (not (eq s ref-star))
-                            (< (star-dist s ref-point) (star-dist best-star ref-point)))
-                       "WARNING "
-                       "")
-                   (name/n s)
-                   (star->pos s)
-                   (magnitude/m s)
-                   (star-dist s ref-point)
-                   (if (eq s ref-star)
-                       "<--------- SELF"
-                       "")
-                   (if (eq s best-star)
-                       "<----- BEST"
-                       ""))
-           (loop for p in (planets/p s)
-              do (format t
-                         "   ~a ~25a H~a~%"
-                         (ident/id p)
-                         (name/n p)
-                         (habitability/h p)))))))
+(comment
+ (defun show-stars (stars)
+   (let* ((tree (kdtree (copy-seq stars) #'star->pos 0))
+          (ref-star (rand-nth stars))
+          (ref-point (star->pos ref-star))
+          (best-star (nearest-neighbor tree #'star->pos ref-point)))
+     (format t "REF STAR: ~10a ~{~4a ~}~%"
+             (name/n ref-star)
+             (star->pos ref-star))
+     (format t "BEST STAR: ~a~%" (name/n best-star))
+     (loop for s in stars
+        for j from 0
+        do
+          (progn
+            (format t "~3a ~a~15a ~{~15,5f ~} M~a dist: ~15,0f~a~a~%"
+                    j
+                    (if (and (not (eq s ref-star))
+                             (< (star-dist s ref-point) (star-dist best-star ref-point)))
+                        "WARNING "
+                        "")
+                    (name/n s)
+                    (star->pos s)
+                    (magnitude/m s)
+                    (star-dist s ref-point)
+                    (if (eq s ref-star)
+                        "<--------- SELF"
+                        "")
+                    (if (eq s best-star)
+                        "<----- BEST"
+                        ""))
+            (loop for p in (planets/p s)
+               do (format t
+                          "   ~a ~25a H~a~%"
+                          (ident/id p)
+                          (name/n p)
+                          (habitability/h p))))))))
+
+(defun count-planets ()
+  (let ((ret 0))
+    (map-entities #'(lambda (_) (declare (ignore _)) (incf ret)) 'planet)
+    ret))
+
+(defun maybe-no (n)
+  (if (zerop n)
+      "no"
+      n))
 
 (defun show-stats (counter)
   (format t
-          "T ~a: L ~a K ~a~%"
+          "Time ~a kyr~p; ~a/~a planets ha~[ve~;s~:;ve~] life; ~a planet~p ha~[ve~;s~:;ve~] intelligent life; ~a probe~p sent.~%"
+          counter
           counter
           *planets-with-life*
-          *planets-with-intelligent-life*))
+          (count-planets)
+          *planets-with-life*
+          (maybe-no *planets-with-intelligent-life*)
+          *planets-with-intelligent-life*
+          *planets-with-intelligent-life*
+          (maybe-no *probes-sent*)
+          *probes-sent*))
 
 (defun reset ()
   (clear-entities)
   (setf *planets-with-intelligent-life* 0)
   (setf *planets-with-life* 0))
 
+(defun launch-probe (star planet tree)
+  (when (and (probe/ready planet)
+             (not (probe/launched planet)))
+    (let ((neighbor (nearest-neighbor tree #'star->pos (star->pos star))))
+      (format t "Launching probe from planet ~@(~a~) to star ~:(~a!~)~%"
+              (name/n planet) (name/n neighbor))
+      (setf (probe/launched planet) t)
+      (incf *probes-sent*))))
+
+(defun nextnext (n)
+  (cond
+    ((< n 10) (1+ n))
+    ((< n 1000) (* 2 n))
+    (t (* 100 (floor (/ (* 1.2 n) 100))))))
+
+(defmacro with-perd (cnt-fn &body body)
+  (let ((cur (gensym))
+        (next (gensym))
+        (nextp (gensym)))
+    `(let* ((,cur 0)
+            (,next 1)
+            (,nextp (lambda ()
+                      (incf ,cur)
+                      (when (>= ,cur ,next)
+                        (progn
+                          (setf ,next (nextnext ,cur))
+                          t))))
+            (,cnt-fn ,nextp))
+       ,@body)))
+
 (defun main (&rest _)
   (declare (ignore _))
-
   (reset)
   (init-random-number-generator)
-  (make-stars 10000)
-  (loop repeat 40000
-     for counter from 1
-     do (progn
-          (run-genesis)
-          (run-evolution)
-          (when (zerop (mod counter 100))
-            (show-stats counter))))
+  (let* ((num-stars 10000)
+         (stars (make-stars num-stars))
+         (tree (kdtree (copy-seq stars) #'star->pos 0)))
+    (format t "~%~%~@(~r~) planets surround ~a stars.~%~%"
+            (count-planets) num-stars)
+    (with-perd nextp
+      (loop repeat 20000
+         for counter from 1
+         do (progn
+              (run-genesis)
+              (run-evolution)
+              (loop for s in stars do
+                   (loop for p in (planets/p s) do
+                        (launch-probe s p tree)))
+              (when (funcall nextp)
+                (show-stats counter))))))
   (clear-entities))
 
 (comment
- (main)
-
- (reset)
- (make-stars 30)
- (progn
-   (loop repeat 100000 do
-        (progn
-          (run-genesis)
-          (run-evolution)))
-   (format t "<<<loop done>>>~%"))
- (show-stats 0))
-
+ (main))

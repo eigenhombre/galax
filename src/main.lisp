@@ -39,8 +39,7 @@
     ((> (life/level p) *life->intelligence*)
      (if (zerop (knowledge/level p))
          (progn
-           (format t "Life has become intelligent on ~a!~%"
-                   (name/n p))
+           (format t "~a~%" (itthinks (name/n p)))
            (incf *planets-with-intelligent-life*)
            (setf (knowledge/level p) 1.0))
          (progn
@@ -182,13 +181,11 @@
   (setf *planets-with-life* 0))
 
 (defun launch-probe (star planet tree)
-  (when (and (probe/ready planet)
-             (not (probe/launched planet)))
-    (let ((neighbor (nearest-neighbor tree #'star->pos (star->pos star))))
-      (format t "Launching probe from planet ~@(~a~) to nearest star, ~:(~a~)!~%"
-              (name/n planet) (name/n neighbor))
-      (setf (probe/launched planet) t)
-      (incf *probes-sent*))))
+  (let ((neighbor (nearest-neighbor tree #'star->pos (star->pos star))))
+    (format t "Launching probe from planet ~@(~a~) to nearest star, ~:(~a~)!~%"
+            (name/n planet) (name/n neighbor))
+    (setf (probe/launched planet) t)
+    (incf *probes-sent*)))
 
 (defun nextnext (n)
   (cond
@@ -211,8 +208,7 @@
             (,cnt-fn ,nextp))
        ,@body)))
 
-(defun main (&rest _)
-  (declare (ignore _))
+(defun run ()
   (reset)
   (init-random-number-generator)
   (let* ((num-stars 10000)
@@ -221,17 +217,30 @@
     (format t "~%~%~@(~r~) planets surround ~a stars.~%~%"
             (count-planets) num-stars)
     (with-perd nextp
-      (loop repeat 20000
+      (loop named edward repeat 20000
          for counter from 1
          do (progn
               (run-genesis)
               (run-evolution)
               (loop for s in stars do
-                   (loop for p in (planets/p s) do
-                        (launch-probe s p tree)))
+                   (loop for p in (planets/p s)
+                      when (and (probe/ready p)
+                                (not (probe/launched p)))
+                      do
+                        (launch-probe s p tree)
+                        (return-from edward)))
               (when (funcall nextp)
                 (show-stats counter))))))
   (clear-entities))
+
+(defun main (&rest _)
+  (declare (ignore _))
+  (handler-case
+      (progn
+        (run))
+    (t (e)
+      (declare (ignore e))
+      (format t "~%The universe comes to a sudden end.~%"))))
 
 (comment
  (main))

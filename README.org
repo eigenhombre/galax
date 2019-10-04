@@ -4,4 +4,7 @@ Simulating stellar migration.
 
 Kinda sorta based on https://arxiv.org/abs/1902.04450.
 
-WIP animation here: https://asciinema.org/a/272201
+WIP animations here:
+- https://asciinema.org/a/272201
+- https://asciinema.org/a/272410
+

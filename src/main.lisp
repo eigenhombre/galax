@@ -5,7 +5,7 @@
 (defparameter *planets-with-intelligent-life* 0)
 (defparameter *probes-sent* 0)
 
-(defparameter *speedup* 20)
+(defparameter *speedup* 5)
 (defparameter *genesis-factor* (* *speedup* 1E-10))
 (defparameter *life->intelligence* 1.0)
 (defparameter *initial-life-level* (* *speedup* 1E-3))

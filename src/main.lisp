@@ -5,7 +5,7 @@
 (defparameter *planets-with-intelligent-life* 0)
 (defparameter *probes-sent* 0)
 
-(defparameter *speedup* 2000)
+(defparameter *speedup* 20)
 (defparameter *genesis-factor* (* *speedup* 1E-10))
 (defparameter *life->intelligence* 1.0)
 (defparameter *initial-life-level* (* *speedup* 1E-3))
@@ -72,6 +72,15 @@
 
 (defparameter *galaxy-radius-ly* (/ 105700 2))
 (defparameter *galaxy-thickness-ly* 1000)
+
+;; Probes
+(defun make-probe-name ()
+  (format nil "~:@(~{~a~}~)~x" (take 20 (make-name)) (rand-int 1000)))
+
+(define-entity probe (ident name location)
+  (source-planet :initarg :source-planet)
+  (source-star :initarg :source-star)
+  (dest-star :initarg :dest-star))
 
 (defun init-random-number-generator ()
   (setf *random-state* (make-random-state t)))
@@ -186,9 +195,22 @@
   (setf *planets-with-life* 0))
 
 (defun launch-probe (star planet tree)
-  (let ((neighbor (nearest-neighbor tree #'star->pos (star->pos star))))
-    (format t "Launching probe from planet ~@(~a~) to nearest star, ~:(~a~)!~%"
-            (name/n planet) (name/n neighbor))
+  (let* ((neighbor (nearest-neighbor tree #'star->pos (star->pos star)))
+         (probe-name (make-probe-name)))
+    (format t
+            "Launching probe ~a from planet ~@(~a~) to nearest star, ~:(~a~)!~%"
+            probe-name
+            (name/n planet)
+            (name/n neighbor))
+    (make-instance 'probe
+                   :ident/id *probes-sent*
+                   :name/n probe-name
+                   :location/x (location/x star)
+                   :location/y (location/y star)
+                   :location/z (location/z star)
+                   :source-star star
+                   :source-planet planet
+                   :dest-star neighbor)
     (setf (probe-sending/launched planet) t)
     (incf *probes-sent*)))
 

@@ -1,22 +1,6 @@
 (in-package :galax)
 
 (defmacro defnth (name l) `(defun ,name () (rand-nth ,l)))
-(defun cap (w) (format nil "~@(~a~)" w))
-
-(defun lower-sym (s)
-  (if (symbolp s) (format nil "~(~a~)" s) s))
-(lower-sym 'A)  ;;=> "a"
-(lower-sym "A") ;;=> "A"
-
-(defun capcar (words)
-  (cons (cap (car words))
-        (mapcar #'lower-sym (cdr words))))
-(capcar '(a b c d e)) ;;=> '("A" "b" "c" "d" "e")
-
-(defun seqstr (s) (format nil "~{~a ~}" s))
-
-(defun x->str (x) (if (symbolp x) (symbol-name x) x))
-(defun strcat (a b) (concatenate 'string (x->str a) (x->str b)))
 
 (defnth color `(grey white yellow orange red purple blue black green))
 
@@ -35,9 +19,13 @@
                           "complex molecules"))
 (defnth adjective `(,(color) ,(color-pair) slimy oozing gaseous vitreous microscopic metallic))
 (defnth evolved `("evolved" "started reproducing" "begun self-replicating"))
-(defnth place-adj `(dark deep smoky lava-filled wet icy sunny scorched))
-
-(defnth place-noun `(canyons pits valleys mountaintops))
+(defnth place-adj `(dark smoky lava-filled wet icy sunny scorched))
+(defun place-phrase ()
+  (either
+   `(on the ,(place-adj) ,(on-place-noun))
+   `(in the ,(place-adj) ,(in-place-noun))))
+(defnth on-place-noun `(plateaus peaks mountaintops hills deserts))
+(defnth in-place-noun `(canyons rifts pits valleys craters))
 
 (defmacro one-of (&rest forms)
   (let* ((l (length forms))
@@ -49,11 +37,13 @@
 (defmacro either (a b) `(one-of ,a ,b))
 
 (defun itsalive (planet)
-  (seqstr (capcar (either
-                   `(,(adjective) ,(lifeforms) have ,(evolved)
-                      in the ,(place-adj) ,(place-noun) of planet ,(strcat planet "!"))
-                   `(in the ,(place-adj) ,(place-noun) of planet ,(strcat planet ",")
-                        ,(adjective) ,(lifeforms) have ,(strcat (evolved) "!"))))))
+  (->> (either
+        `(,(adjective) ,(lifeforms) have ,(evolved)
+           ,@(place-phrase) of planet ,(strcat (x->str planet) "!"))
+        `(,@(place-phrase) of planet ,(strcat (x->str planet) ",")
+            ,(adjective) ,(lifeforms) have ,(strcat (evolved) "!")))
+       capcar
+       seqstr))
 
 (defnth intelligence `(intelligent conscious self-aware))
 
@@ -62,22 +52,27 @@
                                  `(living beings have)))
 
 (defun itthinks (planet)
-  (seqstr (capcar
-           (either `(,@(lifeforms-have) become ,(intelligence) on ,(strcat planet "!"))
-                   `(on ,(strcat planet ",") ,@(lifeforms-have) become ,(strcat (lower-sym (intelligence)) "!"))))))
+  (->> (either `(,@(lifeforms-have) become ,(intelligence)
+                   on ,(strcat planet "!"))
+               `(on ,(strcat planet ",") ,@(lifeforms-have)
+                    become ,(strcat (lower-sym (intelligence)) "!")))
+       capcar
+       seqstr))
 
 (comment
  (itthinks "x") ;;=> '"Life has become conscious on x! "
 
  (loop repeat 10 collect (itsalive "X"))
  ;;=>
- '("In the wet canyons of planet x, grey-green algae have begun self-replicating! "
-   "Microscopic nanobes have started reproducing in the lava-filled canyons of planet x! "
-   "Greyish-white nanobes have begun self-replicating in the scorched pits of planet x! "
-   "Grey-green nanobes have begun self-replicating in the sunny mountaintops of planet x! "
-   "Purplish-blue algae have evolved in the icy mountaintops of planet x! "
-   "In the dark valleys of planet x, gaseous algae have started reproducing! "
-   "Greyish-yellow viruses have begun self-replicating in the sunny canyons of planet x! "
-   "Oozing viruses have started reproducing in the scorched valleys of planet x! "
-   "Greyish-white viruses have started reproducing in the wet valleys of planet x! "
-   "In the sunny canyons of planet x, oozing viruses have begun self-replicating! "))
+ '("Reddish-black viruses have started reproducing on the sunny hills of planet X!"
+   "White viruses have evolved in the smoky canyons of planet X!"
+   "On the wet deserts of planet X, grey-green complex molecules have started reproducing!"
+   "Red complex molecules have evolved on the dark mountaintops of planet X!"
+   "Metallic nanobes have evolved in the sunny valleys of planet X!"
+   "In the lava-filled craters of planet X, vitreous carbon chains have evolved!"
+   "Orange-red carbon chains have evolved in the smoky pits of planet X!"
+   "Metallic algae have begun self-replicating in the scorched valleys of planet X!"
+   "Oozing carbon chains have begun self-replicating in the scorched canyons of planet X!"
+   "On the dark peaks of planet X, oozing complex molecules have evolved!")
+ )
+

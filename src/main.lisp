@@ -1,26 +1,31 @@
 (in-package :galax)
 
-(define-aspect ident id)
-(define-aspect name n)
 
 (defparameter *planets-with-life* 0)
 (defparameter *planets-with-intelligent-life* 0)
 (defparameter *probes-sent* 0)
 
-(defparameter *genesis-factor* 1E-10)
+(defparameter *speedup* 2000)
+(defparameter *genesis-factor* (* *speedup* 1E-10))
 (defparameter *life->intelligence* 1.0)
-(defparameter *initial-life-level* 1E-3)
-(defparameter *knowledge-factor* 4E-4)
+(defparameter *initial-life-level* (* *speedup* 1E-3))
+(defparameter *knowledge-factor* (* *speedup* 4E-4))
 (defparameter *probe-knowledge* 10)
-(defparameter *evolution-probability* 1E-2)
-(defparameter *evolution-factor* 1E-2)
+(defparameter *evolution-probability* (* *speedup* 1E-2))
+(defparameter *evolution-factor* (* *speedup* 1E-2))
+
+;; Common aspects
+(define-aspect ident id)
+(define-aspect name n)
 
 ;; Planets
 (define-aspect habitability h)
 (define-aspect knowledge (level :initform 0))
 (define-aspect life (level :initform 0))
-(define-aspect probe (ready :initform nil) (launched :initform nil))
-(define-entity planet (ident name habitability life knowledge probe))
+(define-aspect probe-sending
+  (ready :initform nil)
+  (launched :initform nil))
+(define-entity planet (ident name habitability life knowledge probe-sending))
 
 (define-system genesis ((p habitability life))
   ;;(format t "genesis on ~a~%" (name/n p))
@@ -46,12 +51,12 @@
            (incf (knowledge/level p)
                  (* *knowledge-factor*
                     (knowledge/level p)))
-           (when (and (not (probe/ready p))
+           (when (and (not (probe-sending/ready p))
                       (> (knowledge/level p)
                          *probe-knowledge*))
              (format t "~a is ready to send its first probe!~%"
                      (name/n p))
-             (setf (probe/ready p) t)))))
+             (setf (probe-sending/ready p) t)))))
     ;; intelligence is still evolving:
     (t
      (when (< (random 1.0) (* *evolution-probability*
@@ -184,7 +189,7 @@
   (let ((neighbor (nearest-neighbor tree #'star->pos (star->pos star))))
     (format t "Launching probe from planet ~@(~a~) to nearest star, ~:(~a~)!~%"
             (name/n planet) (name/n neighbor))
-    (setf (probe/launched planet) t)
+    (setf (probe-sending/launched planet) t)
     (incf *probes-sent*)))
 
 (defun nextnext (n)
@@ -224,8 +229,8 @@
               (run-evolution)
               (loop for s in stars do
                    (loop for p in (planets/p s)
-                      when (and (probe/ready p)
-                                (not (probe/launched p)))
+                      when (and (probe-sending/ready p)
+                                (not (probe-sending/launched p)))
                       do
                         (launch-probe s p tree)
                         (return-from edward)))

@@ -3,9 +3,11 @@
 
 (defparameter *planets-with-life* 0)
 (defparameter *planets-with-intelligent-life* 0)
-(defparameter *probes-sent* 0)
+(defparameter *probes-in-flight* 0)
 
-(defparameter *speedup* 5)
+(defparameter *speedup* 1)
+(defparameter *max-iters* 200000)
+(defparameter *num-stars* 10000)
 (defparameter *genesis-factor* (* *speedup* 1E-10))
 (defparameter *life->intelligence* 1.0)
 (defparameter *initial-life-level* (* *speedup* 1E-3))
@@ -15,7 +17,8 @@
 (defparameter *evolution-factor* (* *speedup* 1E-2))
 
 (defparameter *galaxy-radius-ly* (/ 105700 2))
-(defparameter *galaxy-thickness-ly* 1000)
+(defparameter *galaxy-thickness-ly* 10000)
+(defparameter *starbox-thickness* 10000)
 
 ;; Common aspects
 (define-aspect ident id)
@@ -33,25 +36,28 @@
 (define-aspect location x y z)
 (define-aspect magnitude m)
 
+;; Probes
+(define-aspect kinetics pos vel)
+
+(defun make-probe-name ()
+  (format nil "~:@(~{~a~}~)~x"
+          (take 20 (make-name))
+          (rand-int 1000)))
+
+(define-entity probe (ident name kinetics)
+  (source-planet :initarg :source-planet)
+  (source-star :initarg :source-star)
+  (dest-star :initarg :dest-star :accessor dest-star))
+
 (define-entity star (ident location magnitude name)
   (planets :initarg :planets :accessor planets :initform nil))
 
 (define-entity planet (ident name habitability life knowledge probe-sending)
   (star :initarg :star))
 
-;; Probes
-(defun make-probe-name ()
-  (format nil "~:@(~{~a~}~)~x"
-          (take 20 (make-name))
-          (rand-int 1000)))
-
-(define-entity probe (ident name location)
-  (source-planet :initarg :source-planet)
-  (source-star :initarg :source-star)
-  (dest-star :initarg :dest-star))
+(define-entity prime-mover (name kinetics))
 
 (define-system genesis ((p habitability life))
-  ;; (format t "genesis on ~a~%" (name/n p))
   (when (and (zerop (life/level p))
              (< (random 1.0) (* *genesis-factor*
                                 (habitability/h p))))
@@ -87,6 +93,25 @@
        (incf (life/level p)
              (* *evolution-factor* (life/level p)))))))
 
+(define-system travel ((p kinetics))
+  ;; For now, probe speed = speed of light == 1 (distances in years)
+  (let* ((probe-pos (kinetics/pos p))
+         (dest (dest-star p))
+         (dest-loc (list (location/x dest)
+                         (location/y dest)
+                         (location/z dest)))
+         (distance (vmag (v- dest-loc probe-pos))))
+    (if (< distance 10)
+        (progn
+          (format t "Probe ~a arrives at its destination star, ~a!~%"
+                  (name/n p) (name/n dest))
+          (decf *probes-in-flight*)
+          (destroy-entity p))
+        (progn
+          (incf (nth 0 probe-pos) (nth 0 (kinetics/vel p)))
+          (incf (nth 1 probe-pos) (nth 1 (kinetics/vel p)))
+          (incf (nth 2 probe-pos) (nth 2 (kinetics/vel p)))))))
+
 (defun init-random-number-generator ()
   (setf *random-state* (make-random-state t)))
 
@@ -99,9 +124,9 @@
                 (* r (sin th))
                 (- (random *galaxy-thickness-ly*)
                    (/ *galaxy-thickness-ly* 2)))))
-    (:cube (list (random 10000)
-                 (random 10000)
-                 (random 10000)))
+    (:cube (list (random *starbox-thickness*)
+                 (random *starbox-thickness*)
+                 (random *starbox-thickness*)))
     (otherwise (error "bad dist-type"))))
 
 (defun planets-for-star (star)
@@ -138,7 +163,9 @@
 
 (defun count-planets ()
   (let ((ret 0))
-    (map-entities #'(lambda (_) (declare (ignore _)) (incf ret)) 'planet)
+    (map-entities #'(lambda (_)
+                      (declare (ignore _))
+                      (incf ret)) 'planet)
     ret))
 
 (defun maybe-no (n)
@@ -151,7 +178,7 @@
           (strcat "Time ~a kyr~p; "
                   "~a/~a planets ha~[ve~;s~:;ve~] life; "
                   "~a planet~p ha~[ve~;s~:;ve~] intelligent life; "
-                  "~a probe~p sent.~%")
+                  "~a probe~p ~[are~;is~:;are~] in flight.~%")
           counter
           counter
           *planets-with-life*
@@ -160,8 +187,9 @@
           (maybe-no *planets-with-intelligent-life*)
           *planets-with-intelligent-life*
           *planets-with-intelligent-life*
-          (maybe-no *probes-sent*)
-          *probes-sent*))
+          (maybe-no *probes-in-flight*)
+          *probes-in-flight*
+          *probes-in-flight*))
 
 (defun reset ()
   (clear-entities)
@@ -170,47 +198,54 @@
 
 (defun launch-probe (star planet tree)
   (let* ((neighbor (nearest-neighbor tree #'star->pos (star->pos star)))
-         (probe-name (make-probe-name)))
+         (probe-name (make-probe-name))
+         (star-pos (list (location/x star)
+                         (location/y star)
+                         (location/z star)))
+         (neighbor-pos (list (location/x neighbor)
+                             (location/y neighbor)
+                             (location/z neighbor))))
     (format t
             "Launching probe ~a from planet ~@(~a~) to nearest star, ~:(~a~)!~%"
             probe-name
             (name/n planet)
             (name/n neighbor))
-    (make-instance 'probe
-                   :ident/id *probes-sent*
+    (create-entity 'probe
+                   :ident/id *probes-in-flight*
                    :name/n probe-name
-                   :location/x (location/x star)
-                   :location/y (location/y star)
-                   :location/z (location/z star)
+                   :kinetics/pos star-pos
+                   :kinetics/vel (vnorm (v- neighbor-pos star-pos))
                    :source-star star
                    :source-planet planet
                    :dest-star neighbor)
     (setf (probe-sending/launched planet) t)
-    (incf *probes-sent*)))
+    (incf *probes-in-flight*)))
 
 (defun run ()
   (reset)
   (init-random-number-generator)
-  (let* ((num-stars 10000)
-         (stars (make-stars num-stars))
+  (let* ((stars (make-stars *num-stars*))
          (tree (kdtree (copy-seq stars) #'star->pos 0)))
     (format t "~%~%~@(~r~) planets surround ~a stars.~%~%"
-            (count-planets) num-stars)
+            (count-planets) *num-stars*)
     (with-perd nextp
-      (loop named edward repeat 20000
+      (loop named edward repeat *max-iters*
          for counter from 1
          do (progn
               (run-genesis)
               (run-evolution)
+              (run-travel)
               (loop for s in stars do
                    (loop for p in (planets s)
                       when (and (probe-sending/ready p)
                                 (not (probe-sending/launched p)))
                       do
                         (launch-probe s p tree)
-                        (return-from edward)))
+                      ;;(return-from edward)
+                        ))
               (when-perd nextp (show-stats counter))))))
-  (clear-entities))
+  (clear-entities)
+  (format t "Done.~%"))
 
 (defun main (&rest _)
   (declare (ignore _))

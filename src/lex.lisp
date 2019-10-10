@@ -2,6 +2,15 @@
 
 (defmacro defnth (name l) `(defun ,name () (rand-nth ,l)))
 
+(defmacro one-of (&rest forms)
+  (let* ((l (length forms))
+         (cases (loop for f in forms
+                   for i from 0
+                   collect `(,i ,f))))
+    `(case (random ,l) ,@cases)))
+
+(defmacro either (a b) `(one-of ,a ,b))
+
 (defnth color `(grey white yellow orange red purple blue black green))
 
 (defnth color-pair `(greyish-white
@@ -14,27 +23,25 @@
                      grey-green
                      purple-grey
                      reddish-black))
+
 (defnth lifeforms `(algae nanobes viruses
                           "carbon chains"
                           "complex molecules"))
+
 (defnth adjective `(,(color) ,(color-pair) slimy oozing gaseous vitreous microscopic metallic))
+
 (defnth evolved `("evolved" "started reproducing" "begun self-replicating"))
+
 (defnth place-adj `(dark smoky lava-filled wet icy sunny scorched))
+
 (defun place-phrase ()
   (either
    `(on the ,(place-adj) ,(on-place-noun))
    `(in the ,(place-adj) ,(in-place-noun))))
+
 (defnth on-place-noun `(plateaus peaks mountaintops hills deserts))
+
 (defnth in-place-noun `(canyons rifts pits valleys craters))
-
-(defmacro one-of (&rest forms)
-  (let* ((l (length forms))
-         (cases (loop for f in forms
-                   for i from 0
-                   collect `(,i ,f))))
-    `(case (random ,l) ,@cases)))
-
-(defmacro either (a b) `(one-of ,a ,b))
 
 (defun itsalive (planet)
   (->> (either
@@ -75,4 +82,3 @@
    "Oozing carbon chains have begun self-replicating in the scorched canyons of planet X!"
    "On the dark peaks of planet X, oozing complex molecules have evolved!")
  )
-

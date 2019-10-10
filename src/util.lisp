@@ -4,6 +4,7 @@
   (cond
     ((< n 10) (1+ n))
     ((< n 1000) (* 2 n))
+    ((> n 3000) (+ n 3000))
     (t (* 100 (floor (/ (* 1.2 n) 100))))))
 
 (defmacro with-perd (cnt-fn &body body)

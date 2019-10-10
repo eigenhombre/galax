@@ -8,13 +8,13 @@
 (defparameter *speedup* 1)
 (defparameter *max-iters* 200000)
 (defparameter *num-stars* 10000)
-(defparameter *genesis-factor* (* *speedup* 1E-10))
+(defparameter *genesis-factor* (* *speedup* 1D-10))
 (defparameter *life->intelligence* 1.0)
-(defparameter *initial-life-level* (* *speedup* 1E-3))
-(defparameter *knowledge-factor* (* *speedup* 4E-4))
+(defparameter *initial-life-level* (* *speedup* 1D-3))
+(defparameter *knowledge-factor* (* *speedup* 4D-4))
 (defparameter *probe-knowledge* 10)
-(defparameter *evolution-probability* (* *speedup* 1E-2))
-(defparameter *evolution-factor* (* *speedup* 1E-2))
+(defparameter *evolution-probability* (* *speedup* 1D-2))
+(defparameter *evolution-factor* (* *speedup* 1D-2))
 
 (defparameter *galaxy-radius-ly* (/ 105700 2))
 (defparameter *galaxy-thickness-ly* 10000)
@@ -61,7 +61,8 @@
   (when (and (zerop (life/level p))
              (< (random 1.0) (* *genesis-factor*
                                 (habitability/h p))))
-    (format t "~a~%" (itsalive (name/n p)))
+    (format t "~a " (itsalive (name/n p)))
+    (finish-output)
     (incf *planets-with-life*)
     (setf (life/level p) *initial-life-level*)))
 
@@ -73,7 +74,8 @@
     ((> (life/level p) *life->intelligence*)
      (if (zerop (knowledge/level p))
          (progn
-           (format t "~a~%" (itthinks (name/n p)))
+           (format t "~a " (itthinks (name/n p)))
+           (finish-output)
            (incf *planets-with-intelligent-life*)
            (setf (knowledge/level p) 1.0))
          (progn
@@ -83,8 +85,9 @@
            (when (and (not (probe-sending/ready p))
                       (> (knowledge/level p)
                          *probe-knowledge*))
-             (format t "~a is ready to send its first probe!~%"
+             (format t "~a is ready to send its first probe! "
                      (name/n p))
+             (finish-output)
              (setf (probe-sending/ready p) t)))))
     ;; intelligence is still evolving:
     (t
@@ -103,8 +106,9 @@
          (distance (vmag (v- dest-loc probe-pos))))
     (if (< distance 10)
         (progn
-          (format t "Probe ~a arrives at its destination star, ~a!~%"
+          (format t "~&~%Probe ~a arrives at its destination star, ~a! "
                   (name/n p) (name/n dest))
+          (finish-output)
           (decf *probes-in-flight*)
           (destroy-entity p))
         (progn
@@ -170,10 +174,10 @@
 
 (defun show-stats (counter)
   (format t
-          (strcat "After ~a kyr~p, "
+          (strcat "~&~%After ~a kyr~p, "
                   "~a/~a planets ha~[ve~;s~:;ve~] life; "
                   "~a planet~p ha~[ve~;s~:;ve~] intelligent life; "
-                  "~a probe~p ~[are~;is~:;are~] in flight.~%")
+                  "~a probe~p ~[are~;is~:;are~] in flight. ")
           counter
           counter
           *planets-with-life*
@@ -201,10 +205,11 @@
                              (location/y neighbor)
                              (location/z neighbor))))
     (format t
-            "Launching probe ~a from planet ~@(~a~) to nearest star, ~:(~a~)!~%"
+            "Launching probe ~a from planet ~@(~a~) to nearest star, ~:(~a~)! "
             probe-name
             (name/n planet)
             (name/n neighbor))
+    (finish-output)
     (create-entity 'probe
                    :ident/id *probes-in-flight*
                    :name/n probe-name
@@ -240,7 +245,7 @@
                         ))
               (when-perd nextp (show-stats counter))))))
   (clear-entities)
-  (format t "Done.~%"))
+  (format t "Done.~&"))
 
 (defun main (&rest _)
   (declare (ignore _))

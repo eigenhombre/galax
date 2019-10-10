@@ -25,6 +25,14 @@
   `(when (funcall ,f)
      ,@body))
 
+(defun number-word (n)
+  (if (zerop n)
+      "no"
+      (format nil (if (< n 21) "~r" "~a") n)))
+
+(number-word 3) ;;=> '"three"
+(number-word 33) ;;=> '"33"
+
 (defun strcat (&rest args) (format nil "~{~a~}" args))
 
 (defun cap (w) (format nil "~@(~a~)" w))

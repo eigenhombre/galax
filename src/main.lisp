@@ -18,7 +18,7 @@
 
 (defparameter *galaxy-radius-ly* (/ 105700 2))
 (defparameter *galaxy-thickness-ly* 10000)
-(defparameter *starbox-thickness* 10000)
+(defparameter *starbox-thickness* 100000)
 
 ;; Common aspects
 (define-aspect ident id)
@@ -168,14 +168,9 @@
                       (incf ret)) 'planet)
     ret))
 
-(defun maybe-no (n)
-  (if (zerop n)
-      "no"
-      n))
-
 (defun show-stats (counter)
   (format t
-          (strcat "Time ~a kyr~p; "
+          (strcat "After ~a kyr~p, "
                   "~a/~a planets ha~[ve~;s~:;ve~] life; "
                   "~a planet~p ha~[ve~;s~:;ve~] intelligent life; "
                   "~a probe~p ~[are~;is~:;are~] in flight.~%")
@@ -184,10 +179,10 @@
           *planets-with-life*
           (count-planets)
           *planets-with-life*
-          (maybe-no *planets-with-intelligent-life*)
+          (number-word *planets-with-intelligent-life*)
           *planets-with-intelligent-life*
           *planets-with-intelligent-life*
-          (maybe-no *probes-in-flight*)
+          (number-word *probes-in-flight*)
           *probes-in-flight*
           *probes-in-flight*))
 

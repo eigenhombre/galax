@@ -5,14 +5,14 @@
   :build-operation "program-op"
   :build-pathname "galax"
   :entry-point "galax:main"
-  :depends-on ("beast"
-               "cl-oju"
-               "arrow-macros"
-               "syllab"
-               "cl-utilities"
-               "trivialtests")
+  :depends-on (:beast
+               :cl-oju
+               :arrow-macros
+               :syllab
+               :cl-utilities
+               :trivialtests)
   :components ((:module "src"
-                        :components
+                :components
                         ((:file "package")
                          (:file "util" :depends-on ("package"))
                          (:file "neighbors" :depends-on ("package"))
@@ -27,10 +27,9 @@
 (defsystem "galax/tests"
   :author ""
   :license ""
-  :depends-on ("galax"
-               "rove")
+  :depends-on (:galax :rove)
   :components ((:module "tests"
                 :components
-                ((:file "main"))))
+                        ((:file "main"))))
   :description "Test system for galax"
   :perform (test-op (op c) (symbol-call :rove :run c)))

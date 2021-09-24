@@ -61,7 +61,7 @@
   (when (and (zerop (life/level p))
              (< (random 1.0) (* *genesis-factor*
                                 (habitability/h p))))
-    (format t "~a " (itsalive (name/n p)))
+    (format t "~a~%" (itsalive (name/n p)))
     (finish-output)
     (incf *planets-with-life*)
     (setf (life/level p) *initial-life-level*)))
@@ -74,7 +74,7 @@
     ((> (life/level p) *life->intelligence*)
      (if (zerop (knowledge/level p))
          (progn
-           (format t "~a " (itthinks (name/n p)))
+           (format t "~a ~%" (itthinks (name/n p)))
            (finish-output)
            (incf *planets-with-intelligent-life*)
            (setf (knowledge/level p) 1.0))
@@ -85,7 +85,7 @@
            (when (and (not (probe-sending/ready p))
                       (> (knowledge/level p)
                          *probe-knowledge*))
-             (format t "~a is ready to send its first probe! "
+             (format t "~a is ready to send its first probe!~%"
                      (name/n p))
              (finish-output)
              (setf (probe-sending/ready p) t)))))
@@ -106,7 +106,7 @@
          (distance (vmag (v- dest-loc probe-pos))))
     (if (< distance 10)
         (progn
-          (format t "~&~%Probe ~a arrives at its destination star, ~a! "
+          (format t "Probe ~a arrives at its destination star, ~a!~%"
                   (name/n p) (name/n dest))
           (finish-output)
           (decf *probes-in-flight*)
@@ -174,10 +174,10 @@
 
 (defun show-stats (counter)
   (format t
-          (strcat "~&~%After ~a kyr~p, "
+          (strcat "After ~a kyr~p, "
                   "~a/~a planets ha~[ve~;s~:;ve~] life; "
                   "~a planet~p ha~[ve~;s~:;ve~] intelligent life; "
-                  "~a probe~p ~[are~;is~:;are~] in flight. ")
+                  "~a probe~p ~[are~;is~:;are~] in flight.~%")
           counter
           counter
           *planets-with-life*

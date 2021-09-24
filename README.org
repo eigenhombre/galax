@@ -1,6 +1,9 @@
 * Galax
 
-A zero-player "game" simulating stellar migration.
+A "zero-player game" simulating stellar migration.
+
+(What is a zero-player game?  A game that you don't interact with, you
+just look at.)
 
 Kinda sorta based on https://arxiv.org/abs/1902.04450.
 
@@ -10,6 +13,9 @@ WIP animations here:
 - https://asciinema.org/a/273498
 
 #+BEGIN_SRC
+$ make
+# ...
+
 $ ./galax
 
 

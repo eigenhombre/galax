@@ -34,6 +34,19 @@
 
 (defnth place-adj `(dark smoky lava-filled wet icy sunny scorched))
 
+(defnth failure-mode `(fails
+                       explodes
+                       disintigrates
+                       "veers off course"
+                       "is lost"
+                       "goes dark"
+                       "fizzles out"))
+
+(defun failure-msg (probename srcname destname)
+  (->> `(probe ,probename from ,srcname ,(failure-mode) en route to ,destname)
+       capcar
+       seqstr))
+
 (defun place-phrase ()
   (either
    `(on the ,(place-adj) ,(on-place-noun))

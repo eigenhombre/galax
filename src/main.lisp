@@ -5,11 +5,12 @@
 (defparameter *planets-with-intelligent-life* 0)
 (defparameter *probes-in-flight* 0)
 
-(defparameter *speedup* 1)
+(defparameter *speedup* 0.5)
 (defparameter *max-iters* 200000)
 (defparameter *num-stars* 10000)
 (defparameter *genesis-factor* (* *speedup* 1D-10))
 (defparameter *life->intelligence* 1.0)
+(defparameter *probe-failure-rate* 1D-4)
 (defparameter *initial-life-level* (* *speedup* 1D-3))
 (defparameter *knowledge-factor* (* *speedup* 4D-4))
 (defparameter *probe-knowledge* 10)
@@ -46,7 +47,7 @@
 
 (define-entity probe (ident name kinetics)
   (source-planet :initarg :source-planet)
-  (source-star :initarg :source-star)
+  (source-star :initarg :source-star :accessor source-star)
   (dest-star :initarg :dest-star :accessor dest-star))
 
 (define-entity star (ident location magnitude name)
@@ -61,7 +62,7 @@
   (when (and (zerop (life/level p))
              (< (random 1.0) (* *genesis-factor*
                                 (habitability/h p))))
-    (format t "~a~%" (itsalive (name/n p)))
+    (format t " ~a~%" (itsalive (name/n p)))
     (finish-output)
     (incf *planets-with-life*)
     (setf (life/level p) *initial-life-level*)))
@@ -74,7 +75,7 @@
     ((> (life/level p) *life->intelligence*)
      (if (zerop (knowledge/level p))
          (progn
-           (format t "~a ~%" (itthinks (name/n p)))
+           (format t "  ~a ~%" (itthinks (name/n p)))
            (finish-output)
            (incf *planets-with-intelligent-life*)
            (setf (knowledge/level p) 1.0))
@@ -85,7 +86,7 @@
            (when (and (not (probe-sending/ready p))
                       (> (knowledge/level p)
                          *probe-knowledge*))
-             (format t "~a is ready to send its first probe!~%"
+             (format t "   ~a is ready to send its first probe!~%"
                      (name/n p))
              (finish-output)
              (setf (probe-sending/ready p) t)))))
@@ -100,21 +101,29 @@
   ;; For now, probe speed = speed of light == 1 (distances in years)
   (let* ((probe-pos (kinetics/pos p))
          (dest (dest-star p))
+         (source (source-star p))
          (dest-loc (list (location/x dest)
                          (location/y dest)
                          (location/z dest)))
          (distance (vmag (v- dest-loc probe-pos))))
-    (if (< distance 10)
-        (progn
-          (format t "Probe ~a arrives at its destination star, ~a!~%"
-                  (name/n p) (name/n dest))
-          (finish-output)
-          (decf *probes-in-flight*)
-          (destroy-entity p))
-        (progn
-          (incf (nth 0 probe-pos) (nth 0 (kinetics/vel p)))
-          (incf (nth 1 probe-pos) (nth 1 (kinetics/vel p)))
-          (incf (nth 2 probe-pos) (nth 2 (kinetics/vel p)))))))
+    (cond
+      ((< (random 1.0) *probe-failure-rate*)
+       (progn
+         (format t "    ~a!~%" (failure-msg (name/n p)
+                                            (name/n source)
+                                            (name/n dest)))
+         (destroy-entity p)))
+      ((< distance 10)
+       (progn
+         (format t "     Probe ~a arrives at its destination star, ~a!~%"
+                 (name/n p) (name/n dest))
+         (finish-output)
+         (decf *probes-in-flight*)
+         (destroy-entity p)))
+      (t (progn
+           (incf (nth 0 probe-pos) (nth 0 (kinetics/vel p)))
+           (incf (nth 1 probe-pos) (nth 1 (kinetics/vel p)))
+           (incf (nth 2 probe-pos) (nth 2 (kinetics/vel p))))))))
 
 (defun init-random-number-generator ()
   (setf *random-state* (make-random-state t)))
@@ -205,7 +214,7 @@
                              (location/y neighbor)
                              (location/z neighbor))))
     (format t
-            "Launching probe ~a from planet ~@(~a~) to nearest star, ~:(~a~)! "
+            "    Launching probe ~a from planet ~@(~a~) to nearest star, ~:(~a~)!~%"
             probe-name
             (name/n planet)
             (name/n neighbor))
@@ -226,24 +235,24 @@
   (init-random-number-generator)
   (let* ((stars (make-stars *num-stars*))
          (tree (kdtree (copy-seq stars) #'star->pos 0)))
-    (format t "~%~%~@(~r~) planets surround ~a stars.~%~%"
+    (format t "~%~%~@(~r~) planets orbit ~r stars.~%~%"
             (count-planets) *num-stars*)
     (with-perd nextp
       (loop named edward repeat *max-iters*
-         for counter from 1
-         do (progn
-              (run-genesis)
-              (run-evolution)
-              (run-travel)
-              (loop for s in stars do
+            for counter from 1
+            do (progn
+                 (run-genesis)
+                 (run-evolution)
+                 (run-travel)
+                 (loop for s in stars do
                    (loop for p in (planets s)
-                      when (and (probe-sending/ready p)
-                                (not (probe-sending/launched p)))
-                      do
-                        (launch-probe s p tree)
-                      ;;(return-from edward)
-                        ))
-              (when-perd nextp (show-stats counter))))))
+                         when (and (probe-sending/ready p)
+                                   (not (probe-sending/launched p)))
+                           do
+                              (launch-probe s p tree)
+                              ;;(return-from edward)
+                         ))
+                 (when-perd nextp (show-stats counter))))))
   (clear-entities)
   (format t "Done.~&"))
 

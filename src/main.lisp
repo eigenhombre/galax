@@ -181,12 +181,26 @@
                       (incf ret)) 'planet)
     ret))
 
+(defun logdigit (x)
+  (if (= x 0)
+      "0"
+      (format nil "~a" (truncate (1+ (log x 10))))))
+
+(defun stats-prefix (life intelligence flight)
+  (format nil "~a~a~a"
+          (logdigit life)
+          (logdigit intelligence)
+          (logdigit flight)))
+
 (defun show-stats (counter)
   (format t
-          (strcat "After ~a kyr~p, "
+          (strcat "~a After ~a kyr~p, "
                   "~a/~a planets ha~[ve~;s~:;ve~] life; "
                   "~a planet~p ha~[ve~;s~:;ve~] intelligent life; "
                   "~a probe~p ~[are~;is~:;are~] in flight.~%")
+          (stats-prefix *planets-with-life*
+                        *planets-with-intelligent-life*
+                        *probes-in-flight*)
           counter
           counter
           *planets-with-life*
@@ -238,7 +252,7 @@
     (format t "~%~%~@(~r~) planets orbit ~r stars.~%~%"
             (count-planets) *num-stars*)
     (with-perd nextp
-      (loop named edward repeat *max-iters*
+      (loop named edward ;; repeat *max-iters*
             for counter from 1
             do (progn
                  (run-genesis)

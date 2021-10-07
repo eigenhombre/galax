@@ -11,6 +11,7 @@ WIP animations here:
 - https://asciinema.org/a/272201
 - https://asciinema.org/a/272410
 - https://asciinema.org/a/273498
+- https://asciinema.org/a/vMDsD4jQN0tpuJMAuOrBjp6LZ
 
 #+BEGIN_SRC
 $ make

@@ -1,6 +1,6 @@
 # Galax
 
-<img src="/galax.jpg" width="600">
+<img src="/galaxbw.jpg" width="600">
 
 A "zero-player game" simulating stellar migration.
 

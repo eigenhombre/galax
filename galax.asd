@@ -8,19 +8,19 @@
   :depends-on (:beast
                :cl-oju
                :arrow-macros
-               :syllab
+               :nominal
                :cl-utilities
                :trivialtests)
   :components ((:module "src"
                 :components
-                        ((:file "package")
-                         (:file "util" :depends-on ("package"))
-                         (:file "neighbors" :depends-on ("package"))
-                         (:file "lex" :depends-on ("package" "util"))
-                         (:file "main" :depends-on ("package"
-                                                    "neighbors"
-                                                    "lex"
-                                                    "util")))))
+                ((:file "package")
+                 (:file "util" :depends-on ("package"))
+                 (:file "neighbors" :depends-on ("package"))
+                 (:file "lex" :depends-on ("package" "util"))
+                 (:file "main" :depends-on ("package"
+                                            "neighbors"
+                                            "lex"
+                                            "util")))))
   :description ""
   :in-order-to ((test-op (test-op "galax/tests"))))
 

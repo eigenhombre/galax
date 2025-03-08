@@ -2,10 +2,9 @@
 
 <img src="/galaxbw.jpg" width="600">
 
-A "zero-player game" simulating stellar migration.
+A "zero-player game"[^1] simulating stellar migration.
 
-(What is a zero-player game?  A game that you don't interact with, you
-just look at.)
+[^1]: A zero-player game is a game that evolves without any input from the player. https://en.wikipedia.org/wiki/Zero-player_game
 
 Kinda sorta based on https://arxiv.org/abs/1902.04450.
 
@@ -14,6 +13,20 @@ WIP animations here:
 - https://asciinema.org/a/272410
 - https://asciinema.org/a/273498
 - https://asciinema.org/a/vMDsD4jQN0tpuJMAuOrBjp6LZ
+
+# Running from Docker
+
+```
+docker run --rm -it eigenhombre/galax
+```
+
+# Running from Source
+
+## Prerequisites
+
+-- `sbcl`
+-- `make`
+-- Quicklisp
 
 ```
 $ make

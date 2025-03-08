@@ -24,9 +24,9 @@ docker run --rm -it eigenhombre/galax
 
 ## Prerequisites
 
--- `sbcl`
--- `make`
--- Quicklisp
+- [SBCL](https://www.sbcl.org/)
+- `make`
+- [Quicklisp](https://www.quicklisp.org/beta/)
 
 ```
 $ make
